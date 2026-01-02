@@ -230,6 +230,34 @@ actor HelioviewerService {
         return URL(string: urlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? urlString)
     }
     
+    /// Generate a screenshot URL for SOHO LASCO C2/C3 (coronagraph) imagery
+    func getLASCOImageURL(
+        date: Date = Date(),
+        instrument: SolarInstrument = .sohoLASCO_C2,
+        width: Int = 1024,
+        height: Int = 1024,
+        scale: Bool = false,
+        watermark: Bool = false
+    ) -> URL? {
+        let dateStr = isoDateString(from: date)
+        let layers = "[\(instrument.layerString)]"
+        
+        // LASCO has wider field of view - use appropriate scale
+        let imageScale = instrument.imageScale
+        
+        var urlString = "\(baseURL)/takeScreenshot/?"
+        urlString += "date=\(dateStr)"
+        urlString += "&imageScale=\(imageScale)"
+        urlString += "&layers=\(layers)"
+        urlString += "&x0=0&y0=0"
+        urlString += "&width=\(width)&height=\(height)"
+        urlString += "&display=true"
+        urlString += "&scale=\(scale)"
+        urlString += "&watermark=\(watermark)"
+        
+        return URL(string: urlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? urlString)
+    }
+    
     /// Get the closest JP2 image info with WCS header data
     func getClosestImage(date: Date, sourceId: Int) async throws -> ClosestImageResponse {
         let dateStr = isoDateString(from: date)
@@ -379,7 +407,7 @@ actor HelioviewerService {
 
 /// Different solar observing instruments available via Helioviewer
 enum SolarInstrument: String, CaseIterable, Identifiable, Sendable {
-    case sdoAIA = "SDO/AIA"
+    case sdoAIA = "SDO"
     case sohoLASCO_C2 = "LASCO C2"
     case sohoLASCO_C3 = "LASCO C3"
     
@@ -387,7 +415,7 @@ enum SolarInstrument: String, CaseIterable, Identifiable, Sendable {
     
     var displayName: String {
         switch self {
-        case .sdoAIA: return "SDO AIA"
+        case .sdoAIA: return "SDO"
         case .sohoLASCO_C2: return "SOHO LASCO C2"
         case .sohoLASCO_C3: return "SOHO LASCO C3"
         }
@@ -483,16 +511,16 @@ enum SDOWavelength: String, CaseIterable, Identifiable, Sendable {
     
     var description: String {
         switch self {
-        case .aia94: return "Hot flare plasma (~6 million K)"
-        case .aia131: return "Flare plasma, active region cores"
-        case .aia171: return "Quiet corona, coronal loops (~630,000 K)"
-        case .aia193: return "Corona, hot flare plasma (~1.2 million K)"
-        case .aia211: return "Active regions (~2 million K)"
-        case .aia304: return "Chromosphere, transition region (~50,000 K)"
-        case .aia335: return "Active regions (~2.5 million K)"
-        case .aia1600: return "Upper photosphere, transition region"
-        case .aia1700: return "Temperature minimum, photosphere"
-        case .hmiMag: return "Magnetic field strength"
+        case .aia94: return "Flaring regions (Fe XVIII) — 6.3 million K"
+        case .aia131: return "Flaring regions (Fe VIII, XX, XXIII) — 400K to 16 million K"
+        case .aia171: return "Quiet corona, upper transition region (Fe IX) — 630,000 K"
+        case .aia193: return "Corona and hot flare plasma (Fe XII, XXIV) — 1.2 to 20 million K"
+        case .aia211: return "Active region corona (Fe XIV) — 2 million K"
+        case .aia304: return "Chromosphere and transition region (He II) — 50,000 K"
+        case .aia335: return "Active region corona (Fe XVI) — 2.5 million K"
+        case .aia1600: return "Transition region and upper photosphere (C IV) — 100,000 K"
+        case .aia1700: return "Temperature minimum, photosphere (continuum) — 5,000 K"
+        case .hmiMag: return "Photospheric magnetic field strength and polarity"
         }
     }
     

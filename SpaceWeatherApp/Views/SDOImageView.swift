@@ -445,13 +445,14 @@ struct InstrumentChip: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                Image(systemName: instrument.icon)
-                    .font(.subheadline)
+                Circle()
+                    .fill(chipColor)
+                    .frame(width: 12, height: 12)
                 Text(instrument.rawValue)
                     .font(Theme.mono(13, weight: isSelected ? .bold : .medium))
             }
             .foregroundStyle(isSelected ? .white : .white.opacity(0.6))
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(isSelected ? chipColor.opacity(0.3) : Color.white.opacity(0.1))
             .clipShape(Capsule())

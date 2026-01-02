@@ -9,7 +9,13 @@ struct EventDetailView: View {
     @State private var eventWCS: SolarWCS?
     @State private var isLoadingImage = true
     @State private var selectedWavelength: SDOWavelength = .aia171
+    @State private var selectedInstrument: SolarInstrument = .sdoAIA
     @State private var showWavelengthSheet = false
+    
+    /// Whether this event should show LASCO instead of AIA
+    private var isCMEEvent: Bool {
+        event.type == .cme
+    }
     
     var body: some View {
         ScrollView {
@@ -37,8 +43,10 @@ struct EventDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .task {
-            // Use current wavelength from viewModel
-            if let viewModel = viewModel {
+            // Use LASCO for CME events, SDO AIA for others
+            if isCMEEvent {
+                selectedInstrument = .sohoLASCO_C2
+            } else if let viewModel = viewModel {
                 selectedWavelength = viewModel.selectedWavelength
             }
             await loadEventImage()
@@ -47,8 +55,15 @@ struct EventDetailView: View {
     
     private var headerCard: some View {
         VStack(spacing: 16) {
-            // Event image cutout - larger and using event-specific wavelength
-            if let x = event.hpcX, let y = event.hpcY {
+            // CME events show full LASCO coronagraph image
+            if isCMEEvent {
+                cmeImageView
+                
+                // Instrument picker for LASCO
+                wavelengthPicker
+                
+            } else if let x = event.hpcX, let y = event.hpcY {
+                // Event image cutout - larger and using event-specific wavelength
                 Group {
                     if isLoadingImage {
                         Circle()
@@ -144,9 +159,9 @@ struct EventDetailView: View {
         } label: {
             HStack(spacing: 6) {
                 Circle()
-                    .fill(colorForWavelength(selectedWavelength))
+                    .fill(isCMEEvent ? colorForInstrument(selectedInstrument) : colorForWavelength(selectedWavelength))
                     .frame(width: 12, height: 12)
-                Text(selectedWavelength.rawValue)
+                Text(isCMEEvent ? selectedInstrument.displayName : selectedWavelength.rawValue)
                     .font(Theme.mono(13, weight: .medium))
                 Image(systemName: "chevron.down")
                     .font(Theme.mono(10))
@@ -158,20 +173,83 @@ struct EventDetailView: View {
             .clipShape(Capsule())
         }
         .sheet(isPresented: $showWavelengthSheet) {
-            EventWavelengthPickerSheet(
-                selectedWavelength: $selectedWavelength,
-                onSelect: {
-                    Task { await loadEventImage() }
+            if isCMEEvent {
+                CMEInstrumentPickerSheet(
+                    selectedInstrument: $selectedInstrument,
+                    onSelect: {
+                        Task { await loadEventImage() }
+                    }
+                )
+            } else {
+                EventWavelengthPickerSheet(
+                    selectedWavelength: $selectedWavelength,
+                    onSelect: {
+                        Task { await loadEventImage() }
+                    }
+                )
+            }
+        }
+    }
+    
+    private func colorForInstrument(_ instrument: SolarInstrument) -> Color {
+        switch instrument {
+        case .sohoLASCO_C2: return .orange
+        case .sohoLASCO_C3: return .blue
+        default: return .white
+        }
+    }
+    
+    /// Full LASCO coronagraph image view for CME events
+    private var cmeImageView: some View {
+        Group {
+            if isLoadingImage {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.black.opacity(0.3))
+                    .frame(width: 300, height: 300)
+                    .overlay {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                    }
+            } else if let url = eventImageURL {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 300, height: 300)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(colorForType(event.type), lineWidth: 3)
+                            )
+                            .shadow(color: colorForType(event.type).opacity(0.4), radius: 12)
+                    case .empty:
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.black.opacity(0.3))
+                            .frame(width: 300, height: 300)
+                            .overlay { ProgressView() }
+                    default:
+                        fallbackIcon
+                    }
                 }
-            )
+            } else {
+                fallbackIcon
+            }
         }
     }
     
     private func loadEventImage() async {
         isLoadingImage = true
         if let viewModel = viewModel {
-            eventImageURL = await viewModel.getEventImageURL(for: event, wavelength: selectedWavelength)
-            eventWCS = await viewModel.getEventWCS(for: event, wavelength: selectedWavelength)
+            if isCMEEvent {
+                // Use LASCO for CME events
+                eventImageURL = await viewModel.getLASCOImageURL(for: event, instrument: selectedInstrument)
+                eventWCS = nil  // LASCO doesn't use HPC coordinates
+            } else {
+                eventImageURL = await viewModel.getEventImageURL(for: event, wavelength: selectedWavelength)
+                eventWCS = await viewModel.getEventWCS(for: event, wavelength: selectedWavelength)
+            }
         }
         isLoadingImage = false
     }
@@ -504,6 +582,78 @@ struct EventWavelengthPickerSheet: View {
         case "blue": return .blue
         case "pink": return .pink
         case "gray": return .gray
+        default: return .white
+        }
+    }
+}
+
+// MARK: - CME Instrument Picker Sheet (LASCO)
+
+struct CMEInstrumentPickerSheet: View {
+    @Binding var selectedInstrument: SolarInstrument
+    var onSelect: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    private let lascoInstruments: [SolarInstrument] = [.sohoLASCO_C2, .sohoLASCO_C3]
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(lascoInstruments) { instrument in
+                        Button {
+                            selectedInstrument = instrument
+                            onSelect()
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 14) {
+                                Image(systemName: instrument.icon)
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(colorForInstrument(instrument))
+                                    .frame(width: 28)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(instrument.displayName)
+                                        .font(Theme.mono(16, weight: .semibold))
+                                        .foregroundStyle(.primary)
+                                    Text(instrument.description)
+                                        .font(Theme.mono(12))
+                                        .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                if selectedInstrument == instrument {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(Theme.accentColor)
+                                        .font(Theme.mono(18))
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("SOHO Coronagraphs")
+                } footer: {
+                    Text("LASCO coronagraphs block the Sun's disk to reveal the faint corona and CMEs.")
+                }
+            }
+            .navigationTitle("Coronagraph")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+    
+    private func colorForInstrument(_ instrument: SolarInstrument) -> Color {
+        switch instrument {
+        case .sohoLASCO_C2: return .orange
+        case .sohoLASCO_C3: return .blue
         default: return .white
         }
     }

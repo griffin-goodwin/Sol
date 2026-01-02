@@ -68,7 +68,8 @@ class NotificationManager: NSObject, ObservableObject {
     
     func requestAuthorization() async -> Bool {
         do {
-            let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound, .provisional])
+            // Request full notification permissions (not provisional - those deliver quietly)
+            let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
             await MainActor.run {
                 self.isAuthorized = granted
             }
@@ -127,12 +128,31 @@ class NotificationManager: NSObject, ObservableObject {
     
     // MARK: - Process Events for Notifications
     
+    /// Mark events as seen without sending notifications (called on app launch)
+    func markEventsAsSeen(_ events: [SpaceWeatherEvent]) {
+        for event in events {
+            seenEventIds.insert(event.id)
+        }
+        saveSeenEventIds()
+        print("📝 Marked \(events.count) existing events as seen")
+    }
+    
     func processEventsForNotifications(_ events: [SpaceWeatherEvent]) {
         guard isAuthorized && hasAnyNotificationsEnabled else { return }
+        
+        // Only notify about events from the last hour (to avoid old event spam)
+        let oneHourAgo = Date().addingTimeInterval(-3600)
         
         for event in events {
             // Skip if we've already notified about this event
             guard !seenEventIds.contains(event.id) else { continue }
+            
+            // Skip events older than 1 hour - they're not "new"
+            guard event.date > oneHourAgo else {
+                // Still mark as seen so we don't notify later
+                seenEventIds.insert(event.id)
+                continue
+            }
             
             // Check if notification should be sent based on preferences
             if shouldNotify(for: event) {
@@ -374,10 +394,16 @@ class NotificationManager: NSObject, ObservableObject {
         let fetchTask = Task {
             do {
                 let swpcService = SWPCService()
-                let alerts = try await swpcService.fetchUnifiedAlerts()
+                
+                // Fetch both SWPC alerts and GOES flares
+                async let alertsTask = swpcService.fetchUnifiedAlerts()
+                async let flaresTask = swpcService.fetchUnifiedFlares()
+                
+                let (alerts, flares) = try await (alertsTask, flaresTask)
+                let allEvents = alerts + flares
                 
                 await MainActor.run {
-                    self.processEventsForNotifications(alerts)
+                    self.processEventsForNotifications(allEvents)
                 }
                 
                 task.setTaskCompleted(success: true)
@@ -403,6 +429,27 @@ class NotificationManager: NSObject, ObservableObject {
     func clearSeenEvents() {
         seenEventIds.removeAll()
         saveSeenEventIds()
+    }
+    
+    // MARK: - Test Notification
+    
+    func sendTestNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "🌞 Test Solar Flare Alert"
+        content.body = "This is a test notification from Sol. If you see this, notifications are working!"
+        content.sound = .default
+        content.categoryIdentifier = "SPACE_WEATHER_ALERT"
+        
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false)
+        let request = UNNotificationRequest(identifier: "test-\(Date().timeIntervalSince1970)", content: content, trigger: trigger)
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Failed to send test notification: \(error)")
+            } else {
+                print("✅ Test notification scheduled")
+            }
+        }
     }
 }
 

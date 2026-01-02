@@ -316,6 +316,16 @@ class SpaceWeatherViewModel {
         )
     }
     
+    /// Get LASCO image URL for CME events
+    func getLASCOImageURL(for event: SpaceWeatherEvent, instrument: SolarInstrument) async -> URL? {
+        return await helioviewerService.getLASCOImageURL(
+            date: event.date,
+            instrument: instrument,
+            width: 1024,
+            height: 1024
+        )
+    }
+    
     /// Get WCS for an event's image with specific wavelength
     func getEventWCS(for event: SpaceWeatherEvent, wavelength: SDOWavelength) async -> SolarWCS? {
         return await helioviewerService.getImageWCS(date: event.date, wavelength: wavelength)

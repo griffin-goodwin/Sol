@@ -87,13 +87,11 @@ struct EventsListView: View {
                 Spacer()
                 
                 Picker("", selection: $viewModel.overlayTimeRangeHours) {
-                    Text("15 min").tag(15.0)
-                    Text("30 min").tag(30.0)
-                    Text("1 hour").tag(60.0)
-                    Text("2 hours").tag(120.0)
-                    Text("6 hours").tag(360.0)
-                    Text("12 hours").tag(720.0)
-                    Text("24 hours").tag(1440.0)
+                    Text("6 hours").tag(6.0)
+                    Text("12 hours").tag(12.0)
+                    Text("1 day").tag(24.0)
+                    Text("3 days").tag(72.0)
+                    Text("7 days").tag(168.0)
                 }
                 .pickerStyle(.menu)
                 .tint(.orange)

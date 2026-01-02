@@ -193,17 +193,17 @@ struct XRayFluxChart: View {
                 HStack(spacing: 12) {
                     HStack(spacing: 4) {
                         RoundedRectangle(cornerRadius: 1)
-                            .fill(.orange)
+                            .fill(.cyan)
                             .frame(width: 12, height: 2)
-                        Text("1-8Å")
+                        Text("0.5-4Å")
                             .font(.system(size: 8))
                             .foregroundStyle(.white.opacity(0.5))
                     }
                     HStack(spacing: 4) {
                         RoundedRectangle(cornerRadius: 1)
-                            .fill(.cyan)
+                            .fill(.orange)
                             .frame(width: 12, height: 2)
-                        Text("0.5-4Å")
+                        Text("1-8Å")
                             .font(.system(size: 8))
                             .foregroundStyle(.white.opacity(0.5))
                     }

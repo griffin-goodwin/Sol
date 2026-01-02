@@ -524,6 +524,23 @@ struct NotificationSettingsView: View {
                     }
                 }
                 .listRowBackground(Theme.cardBackground)
+                
+                Button {
+                    notificationManager.sendTestNotification()
+                } label: {
+                    HStack {
+                        Image(systemName: "bell.badge")
+                            .foregroundStyle(Theme.accentColor)
+                        Text("Send Test Notification")
+                            .font(Theme.mono(14))
+                        Spacer()
+                        Text("Tap to test")
+                            .font(Theme.mono(10))
+                            .foregroundStyle(Theme.secondaryText)
+                    }
+                }
+                .disabled(!notificationManager.isAuthorized)
+                .listRowBackground(Theme.cardBackground)
             } footer: {
                 Text("Background refresh requires iOS system permission. Battery impact is minimal.")
                     .font(Theme.mono(10))

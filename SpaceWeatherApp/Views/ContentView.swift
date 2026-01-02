@@ -72,6 +72,9 @@ public struct ContentView: View {
             await viewModel.loadEvents()
             await viewModel.loadFlareProbabilities()
             
+            // Mark existing events as "seen" so we don't notify about old events
+            NotificationManager.shared.markEventsAsSeen(viewModel.events)
+            
             // Check if we should prompt for notifications
             if !UserDefaults.standard.bool(forKey: hasPromptedForNotificationsKey) {
                 // Small delay to let the UI settle

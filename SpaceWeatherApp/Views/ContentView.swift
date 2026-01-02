@@ -82,7 +82,7 @@ public struct ContentView: View {
         .alert("Enable Notifications?", isPresented: $showNotificationPrompt) {
             Button("Enable") {
                 Task {
-                    await notificationManager.requestAuthorization()
+                    _ = await notificationManager.requestAuthorization()
                     UserDefaults.standard.set(true, forKey: hasPromptedForNotificationsKey)
                 }
             }

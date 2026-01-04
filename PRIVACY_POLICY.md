@@ -40,7 +40,7 @@ If you enable notifications, the App will send local alerts about space weather 
 
 ## Children's Privacy
 
-Sol. does not knowingly collect any information from children under 13 years of age. The App is designed for general audiences interested in space weather.
+SOL.SWx does not knowingly collect any information from children under 13 years of age. The App is designed for general audiences interested in space weather.
 
 ## Changes to This Policy
 

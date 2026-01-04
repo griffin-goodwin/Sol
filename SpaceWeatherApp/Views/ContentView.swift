@@ -41,7 +41,7 @@ public struct ContentView: View {
             SDOImageView(viewModel: viewModel)
                 .tabItem {
                     Label {
-                        Text("SOL.")
+                        Text("SOL.SWx")
                     } icon: {
                         Image(systemName: "sun.max.fill")
                     }

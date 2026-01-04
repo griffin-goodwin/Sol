@@ -90,7 +90,7 @@ struct SDOImageView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("SOL.")
+                    Text("SOL.SWx")
                         .font(Theme.mono(42, weight: .black))
                         .tracking(3)
                         .foregroundStyle(Theme.solarTitleGradient)

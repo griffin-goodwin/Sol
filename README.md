@@ -1,10 +1,10 @@
-# Sol.
+# SOL.SWx
 
 ☀️ Real-time space weather monitoring for iOS
 
 ## About
 
-Sol. is a space weather app that provides real-time information about solar activity, including:
+SOL.SWx is a space weather app that provides real-time information about solar activity, including:
 
 - **Solar Flares** - X, M, C class flare alerts with severity indicators
 - **Coronal Mass Ejections (CMEs)** - Earth-directed CME tracking
@@ -33,11 +33,11 @@ Sol. is a space weather app that provides real-time information about solar acti
 
 ## Privacy
 
-Sol. does not collect any personal data. See [Privacy Policy](PRIVACY_POLICY.md) for details.
+SOL.SWx does not collect any personal data. See [Privacy Policy](PRIVACY_POLICY.md) for details.
 
 ## License
 
-© 2026 Sol. All rights reserved.
+© 2026 SOL.SWx. All rights reserved.
 
 ## Contact
 

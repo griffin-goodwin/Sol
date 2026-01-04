@@ -1,14 +1,14 @@
-# Sol. Privacy Policy
+# SOL.SWx Privacy Policy
 
 **Last Updated: January 1, 2026**
 
 ## Overview
 
-Sol. ("the App") is a space weather monitoring application that displays publicly available solar and geomagnetic data. Your privacy is important to us, and this policy explains how the App handles information.
+SOL.SWx ("the App") is a space weather monitoring application that displays publicly available solar and geomagnetic data. Your privacy is important to us, and this policy explains how the App handles information.
 
 ## Data Collection
 
-**Sol. does not collect, store, or transmit any personal data.**
+**SOL.SWx does not collect, store, or transmit any personal data.**
 
 The App:
 - Does NOT require user accounts or login

@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		APP_REF /* SpaceWeatherApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SpaceWeatherApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		APP_REF /* SOL.SWx.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SOL.SWx.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -40,7 +40,7 @@
 		PRODUCTS_GROUP /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				APP_REF /* SpaceWeatherApp.app */,
+				APP_REF /* SOL.SWx.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,9 +48,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		APP_TARGET /* SpaceWeatherApp */ = {
+		APP_TARGET /* SOL.SWx */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CONFIG_LIST_TARGET /* Build configuration list for PBXNativeTarget "SpaceWeatherApp" */;
+			buildConfigurationList = CONFIG_LIST_TARGET /* Build configuration list for PBXNativeTarget "SOL.SWx" */;
 			buildPhases = (
 				SOURCES_PHASE /* Sources */,
 				FRAMEWORKS_PHASE /* Frameworks */,
@@ -63,9 +63,9 @@
 			fileSystemSynchronizedGroups = (
 				APP_GROUP /* SpaceWeatherApp */,
 			);
-			name = SpaceWeatherApp;
+			name = SOL.SWx;
 			productName = SpaceWeatherApp;
-			productReference = APP_REF /* SpaceWeatherApp.app */;
+			productReference = APP_REF /* SOL.SWx.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -83,7 +83,7 @@
 					};
 				};
 			};
-			buildConfigurationList = CONFIG_LIST_PROJECT /* Build configuration list for PBXProject "SpaceWeatherApp" */;
+			buildConfigurationList = CONFIG_LIST_PROJECT /* Build configuration list for PBXProject "SOL.SWx" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -97,7 +97,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				APP_TARGET /* SpaceWeatherApp */,
+				APP_TARGET /* SOL.SWx */,
 			);
 		};
 /* End PBXProject section */
@@ -200,7 +200,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = "(com.griffingoodwin.sol.refresh)";
-				INFOPLIST_KEY_CFBundleDisplayName = "Sol.";
+				INFOPLIST_KEY_CFBundleDisplayName = SOL.SWx;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIBackgroundModes = "fetch processing";
@@ -289,7 +289,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = "(com.griffingoodwin.sol.refresh)";
-				INFOPLIST_KEY_CFBundleDisplayName = "Sol.";
+				INFOPLIST_KEY_CFBundleDisplayName = SOL.SWx;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIBackgroundModes = "fetch processing remote-notification";
@@ -311,7 +311,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		CONFIG_LIST_PROJECT /* Build configuration list for PBXProject "SpaceWeatherApp" */ = {
+		CONFIG_LIST_PROJECT /* Build configuration list for PBXProject "SOL.SWx" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				DEBUG_CONFIG_PROJECT /* Debug */,
@@ -320,7 +320,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CONFIG_LIST_TARGET /* Build configuration list for PBXNativeTarget "SpaceWeatherApp" */ = {
+		CONFIG_LIST_TARGET /* Build configuration list for PBXNativeTarget "SOL.SWx" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				DEBUG_CONFIG_TARGET /* Debug */,

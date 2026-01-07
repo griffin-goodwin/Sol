@@ -95,7 +95,7 @@ struct SDOImageView: View {
                         .tracking(3)
                         .foregroundStyle(Theme.solarTitleGradient)
                         .shadow(color: Theme.accentColor.opacity(0.5), radius: 8, x: 0, y: 0)
-                        .offset(x: 10) // Offset to compensate for trailing button
+                        //.offset(x: 10) // Offset to compensate for trailing button
                 }
                 
                 ToolbarItem(placement: .topBarTrailing) {

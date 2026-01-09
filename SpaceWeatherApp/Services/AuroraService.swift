@@ -1,4 +1,5 @@
 import Foundation
+import CoreLocation
 
 /// Service for fetching Aurora and geomagnetic data from NOAA
 actor AuroraService {
@@ -231,6 +232,63 @@ func fetchAuroraPoints(hemisphere: Hemisphere) async throws -> [AuroraPoint] {
         default: return .none
         }
     }
+}
+
+// MARK: - Geodesy Helpers
+
+/// Result of look-direction geometry computation
+struct GeoLookResult {
+    let azimuthDegrees: Double   // bearing from observer -> target (0..360)
+    let elevationDegrees: Double // alpha, positive = above horizon
+    let surfaceDistanceMeters: Double // great-circle surface distance
+}
+
+/// Compute azimuth / elevation / surface distance from observer to target location.
+/// - Parameters:
+///   - observerLat: observer latitude in degrees
+///   - observerLon: observer longitude in degrees
+///   - observerAltMeters: observer altitude in meters
+///   - targetLat: target latitude in degrees
+///   - targetLon: target longitude in degrees
+///   - auroraAltitudeMeters: assumed emission altitude in meters (default 110 km)
+func computeLookGeometry(observerLat: Double, observerLon: Double, observerAltMeters: Double, targetLat: Double, targetLon: Double, auroraAltitudeMeters h: Double = 110_000.0) -> GeoLookResult {
+    let R = 6_371_000.0 // Earth radius in meters
+
+    let φo = observerLat * .pi / 180.0
+    let λo = observerLon * .pi / 180.0
+    let φa = targetLat * .pi / 180.0
+    let λa = targetLon * .pi / 180.0
+    let dLon = λa - λo
+
+    // central angle theta (clamp for safety)
+    var cosTheta = sin(φo)*sin(φa) + cos(φo)*cos(φa)*cos(dLon)
+    if cosTheta > 1.0 { cosTheta = 1.0 }
+    if cosTheta < -1.0 { cosTheta = -1.0 }
+    let theta = acos(cosTheta)
+
+    // great-circle surface distance
+    let s = R * theta
+
+    // radii
+    let Ro = R + max(0.0, observerAltMeters)
+    let Ra = R + h
+
+    // elevation angle alpha (radians)
+    let numerator = Ra * cos(theta) - Ro
+    let denominator = Ra * sin(theta)
+    let alpha = atan2(numerator, denominator)
+
+    // azimuth (bearing) from observer to target
+    let y = sin(dLon) * cos(φa)
+    let x = cos(φo)*sin(φa) - sin(φo)*cos(φa)*cos(dLon)
+    var az = atan2(y, x) * 180.0 / .pi
+    if az < 0 { az += 360.0 }
+
+    return GeoLookResult(
+        azimuthDegrees: az,
+        elevationDegrees: alpha * 180.0 / .pi,
+        surfaceDistanceMeters: s
+    )
 }
 
 // MARK: - Errors

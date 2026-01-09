@@ -49,7 +49,17 @@ struct AuroraView: View {
                     }
                     .padding(.vertical)
                 }
-                
+
+                // Lightweight compass overlay (bottom-right)
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        AuroraCompassOverlay(auroraPoints: filteredPoints, selectedHemisphere: selectedHemisphere)
+                            .padding()
+                    }
+                }
+
                 if isLoading {
                     loadingOverlay
                 }

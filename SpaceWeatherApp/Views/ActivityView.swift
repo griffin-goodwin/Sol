@@ -24,17 +24,21 @@ struct ActivityView: View {
                     VStack(spacing: 16) {
                         // Collapsible summary section
                         summarySection
-                        
+                            .scaleFade(delay: 0.1)
+
                         // X-Ray Flux Chart
                         if showFluxChart {
                             XRayFluxChart(viewModel: viewModel, height: 100)
+                                .scaleFade(delay: 0.2)
                         }
-                        
+
                         // Quick stats row
                         quickStatsRow
-                        
+                            .slideIn(from: .leading, delay: 0.25)
+
                         // Events list
                         eventsSection
+                            .scaleFade(delay: 0.3)
                     }
                     .padding()
                 }
@@ -44,7 +48,7 @@ struct ActivityView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("ACTIVITY")
-                        .font(Theme.mono(32, weight: .black))
+                        .font(.system(size: 32, weight: .heavy))
                         .tracking(3)
                         .foregroundStyle(Theme.activityTitleGradient)
                         .shadow(color: Theme.accentSecondary.opacity(0.4), radius: 8, x: 0, y: 0)
@@ -124,6 +128,7 @@ struct ActivityView: View {
                     Circle()
                         .fill(overallConditionColor.opacity(0.15))
                         .frame(width: 56, height: 56)
+                        .breathingScale(min: 0.95, max: 1.05, duration: 2)
                     Circle()
                         .fill(
                             RadialGradient(
@@ -134,7 +139,7 @@ struct ActivityView: View {
                             )
                         )
                         .frame(width: 36, height: 36)
-                        .shadow(color: overallConditionColor.opacity(0.5), radius: 8)
+                        .pulsingGlow(color: overallConditionColor, radius: 10)
                     Image(systemName: overallConditionIcon)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(.white)
@@ -340,7 +345,8 @@ struct ActivityView: View {
                             ActivityEventRow(event: event)
                         }
                         .buttonStyle(.plain)
-                        
+                        .staggeredAppearance(index: index, baseDelay: 0.1)
+
                         if index < filteredEvents.count - 1 {
                             Rectangle()
                                 .fill(Color.white.opacity(0.06))
@@ -522,13 +528,15 @@ struct MetricItem: View {
     let value: String
     let label: String
     let color: Color
-    
+
     var body: some View {
         VStack(spacing: Theme.Spacing.xs) {
             Text(value)
                 .font(Theme.mono(20, weight: .bold))
                 .foregroundStyle(color)
                 .shadow(color: color.opacity(0.3), radius: 4)
+                .contentTransition(.numericText())
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: value)
             Text(label)
                 .font(Theme.mono(9, weight: .medium))
                 .foregroundStyle(Theme.tertiaryText)

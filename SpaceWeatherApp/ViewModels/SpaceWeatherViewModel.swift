@@ -17,6 +17,9 @@ class SpaceWeatherViewModel {
     var selectedWavelength: SDOWavelength = .aia171
     var sdoImageURL: URL?
     var isLoadingImage = false
+
+    // Tab accent color driven by IMAGES tab selection
+    var imageTabAccentColor: Color = .orange
     
     // Time range for data display (in hours) - matches SWPC API: 6, 24, 72, 168
     var overlayTimeRangeHours: Double = 24  // Default 1 day

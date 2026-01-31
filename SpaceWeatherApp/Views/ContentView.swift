@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 
 /// Main content view with tab navigation
 public struct ContentView: View {
@@ -7,6 +8,7 @@ public struct ContentView: View {
     @State private var showNotificationPrompt = false
     @StateObject private var notificationManager = NotificationManager.shared
     @State private var hasLaunched = false
+    @Environment(\.requestReview) private var requestReview
     
     private let hasPromptedForNotificationsKey = "hasPromptedForNotifications"
     
@@ -44,26 +46,27 @@ public struct ContentView: View {
                     Label("IMAGES", systemImage: "sun.max.fill")
                 }
                 .tag(0)
-            
+
             ActivityView(viewModel: viewModel)
                 .tabItem {
                     Label("ACTIVITY", systemImage: "waveform.path.ecg")
                 }
                 .tag(1)
-            
+
             AuroraView()
                 .tabItem {
                     Label("AURORA", systemImage: "globe.americas.fill")
                 }
                 .tag(2)
-            
+
             SettingsView(viewModel: viewModel)
                 .tabItem {
                     Label("SETTINGS", systemImage: "gearshape.fill")
                 }
                 .tag(3)
         }
-        .tint(Theme.tabAccent)
+        .tint(selectedTab == 0 ? viewModel.imageTabAccentColor : Theme.tabAccent)
+        .animation(.easeInOut(duration: 0.2), value: selectedTab)
         .task {
             // Load data once at startup (stays in RAM)
             await viewModel.loadXRayFlux()
@@ -97,10 +100,14 @@ public struct ContentView: View {
             Text("Get alerts for solar flares, geomagnetic storms, and other space weather events that could affect Earth.")
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            ReviewManager.recordAppSession()
+
             // Only perform a full refresh when the app is reopened after the initial launch
             if hasLaunched {
                 Task {
                     await viewModel.refresh()
+                    try? await Task.sleep(for: .seconds(2))
+                    ReviewManager.requestReviewIfAppropriate(using: requestReview)
                 }
             }
         }

@@ -54,6 +54,17 @@ public func auroraColor(for probability: Double, boostAlpha: Bool = true) -> Col
     return Color(red: c.r, green: c.g, blue: c.b).opacity(alpha)
 }
 
+/// Returns aurora color at full opacity - for UI elements like compass, badges, text
+public func auroraUIColor(for probability: Double) -> Color {
+    let c = auroraGradientComponents(for: probability)
+    // Brighten the colors for better UI visibility
+    let brighten = 1.3
+    let r = min(1.0, c.r * brighten)
+    let g = min(1.0, c.g * brighten)
+    let b = min(1.0, c.b * brighten)
+    return Color(red: r, green: g, blue: b)
+}
+
 private func lerp(_ a: Double, _ b: Double, _ t: Double) -> Double {
     return a + (b - a) * t
 }

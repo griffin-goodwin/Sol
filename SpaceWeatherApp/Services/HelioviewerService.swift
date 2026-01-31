@@ -360,30 +360,117 @@ actor HelioviewerService {
         frameCount: Int = 24,
         width: Int = 512,
         height: Int = 512
-    ) -> [(date: Date, url: URL)] {
+    ) async -> [(date: Date, url: URL)] {
         var frames: [(date: Date, url: URL)] = []
         
         let totalDuration = endDate.timeIntervalSince(startDate)
         let frameInterval = totalDuration / Double(frameCount - 1)
         
+        var lastImageId: String? = nil
+        
         for i in 0..<frameCount {
             let frameDate = startDate.addingTimeInterval(frameInterval * Double(i))
-            if let url = getInstrumentImageURL(
-                date: frameDate,
-                instrument: instrument,
-                wavelength: wavelength,
-                width: width,
-                height: height
-            ) {
-                frames.append((date: frameDate, url: url))
+            
+            // For LASCO/SOHO, try to filter redundant frames
+            if instrument == .sohoLASCO_C2 || instrument == .sohoLASCO_C3 {
+                let sourceId = (instrument == .sohoLASCO_C2) ? 4 : 5
+                if let closest = try? await getClosestImage(date: frameDate, sourceId: sourceId),
+                   closest.id != lastImageId {
+                    if let url = getInstrumentImageURL(date: frameDate, instrument: instrument, wavelength: wavelength, width: width, height: height) {
+                        frames.append((date: frameDate, url: url))
+                        lastImageId = closest.id
+                    }
+                }
+            } else {
+                if let url = getInstrumentImageURL(
+                    date: frameDate,
+                    instrument: instrument,
+                    wavelength: wavelength,
+                    width: width,
+                    height: height
+                ) {
+                    frames.append((date: frameDate, url: url))
+                }
             }
         }
         
         return frames
     }
     
+    // MARK: - Measurement-Based Image (Multi-Observatory)
+
+    /// Get image URL for any SolarMeasurement (SDO, SOHO, STEREO A, GOES)
+    func getImageURL(
+        date: Date = Date(),
+        measurement: SolarMeasurement,
+        width: Int = 1024,
+        height: Int = 1024
+    ) -> URL? {
+        let dateStr = isoDateString(from: date)
+        let layers = "[\(measurement.layerString)]"
+
+        var urlString = "\(baseURL)/takeScreenshot/?"
+        urlString += "date=\(dateStr)"
+        urlString += "&imageScale=\(measurement.imageScale)"
+        urlString += "&layers=\(layers)"
+        urlString += "&x0=0&y0=0"
+        urlString += "&width=\(width)&height=\(height)"
+        urlString += "&display=true"
+        urlString += "&scale=false"
+        urlString += "&watermark=false"
+
+        return URL(string: urlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? urlString)
+    }
+
+    /// Get animation frame URLs for any SolarMeasurement
+    func getAnimationFrameURLs(
+        measurement: SolarMeasurement,
+        startDate: Date,
+        endDate: Date,
+        frameCount: Int = 24,
+        width: Int = 512,
+        height: Int = 512
+    ) async -> [(date: Date, url: URL)] {
+        var frames: [(date: Date, url: URL)] = []
+
+        let totalDuration = endDate.timeIntervalSince(startDate)
+        let frameInterval = totalDuration / Double(frameCount - 1)
+
+        print("🎞️ Generating \(frameCount) frame URLs from \(startDate) to \(endDate)")
+        
+        var lastImageId: String? = nil
+        
+        for i in 0..<frameCount {
+            let frameDate = startDate.addingTimeInterval(frameInterval * Double(i))
+            
+            // For instruments with sparse data (SOHO, GOES), try to find the actual closest image ID first
+            // to avoid downloading the same image multiple times.
+            if measurement.id.contains("soho") || measurement.id.contains("goes") || measurement.id.contains("stereo") {
+                if let closest = try? await getClosestImage(date: frameDate, sourceId: measurement.sourceId),
+                   closest.id != lastImageId {
+                    // This is a new unique image!
+                    if let url = getImageURL(date: frameDate, measurement: measurement, width: width, height: height) {
+                        print("  🖼️ Frame \(i) (Unique ID: \(closest.id)): \(isoDateString(from: frameDate))")
+                        frames.append((date: frameDate, url: url))
+                        lastImageId = closest.id
+                    }
+                } else {
+                    print("  ⏭️ Skipping Frame \(i): No new image available for \(isoDateString(from: frameDate))")
+                }
+            } else {
+                // SDO usually has high enough cadence that we can just request the timestamps
+                if let url = getImageURL(date: frameDate, measurement: measurement, width: width, height: height) {
+                    frames.append((date: frameDate, url: url))
+                }
+            }
+        }
+
+        return frames
+    }
+
+
     // MARK: - Data Sources
-    
+
     /// Get available data sources (SDO, SOHO, etc.)
     func getDataSources() async throws -> DataSourcesResponse {
         let urlString = "\(baseURL)/getDataSources/?verbose=true"

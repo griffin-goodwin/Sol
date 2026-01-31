@@ -4,36 +4,52 @@ import BackgroundTasks
 @main
 struct SpaceWeatherApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            switch newPhase {
+            case .background:
+                // Schedule background refresh when app goes to background
+                Task { @MainActor in
+                    if NotificationManager.shared.hasAnyNotificationsEnabled {
+                        NotificationManager.shared.scheduleBackgroundRefresh()
+                        print("📱 App entered background - scheduled refresh")
+                    }
+                }
+            case .active:
+                // Check notification authorization when app becomes active
+                Task { @MainActor in
+                    NotificationManager.shared.checkAuthorization()
+                    print("📱 App became active")
+                }
+            default:
+                break
+            }
         }
     }
 }
 
 // MARK: - App Delegate for Background Tasks
 
-@MainActor
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        // Setup notification categories
-        NotificationManager.shared.setupNotificationCategories()
-        
-        // Register background tasks
+        // Register background tasks - must happen before app finishes launching
+        // and must be on main thread (which we are during didFinishLaunching)
         NotificationManager.shared.registerBackgroundTasks()
-        
+
+        // Setup notification categories on main actor
+        Task { @MainActor in
+            NotificationManager.shared.setupNotificationCategories()
+        }
+
         // Set notification delegate
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
-        
+
         return true
-    }
-    
-    func applicationDidEnterBackground(_ application: UIApplication) {
-        // Schedule background refresh when app goes to background
-        if NotificationManager.shared.hasAnyNotificationsEnabled {
-            NotificationManager.shared.scheduleBackgroundRefresh()
-        }
     }
 }
 

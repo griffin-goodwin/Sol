@@ -1,5 +1,18 @@
 import SwiftUI
 import MapKit
+import CoreLocation
+
+// MARK: - User Location Annotation
+
+class UserLocationAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    let title: String? = "You"
+
+    init(coordinate: CLLocationCoordinate2D) {
+        self.coordinate = coordinate
+        super.init()
+    }
+}
 
 // MARK: - Custom Overlay for Aurora Data
 
@@ -151,18 +164,19 @@ struct AuroraMapGlobeView: View {
     let auroraPoints: [AuroraPoint]
     let hemisphere: Hemisphere
     let maxCircles: Int
-    
+
     @State private var position: MapCameraPosition
     @State private var cachedPoints: CachedAuroraPoints?
     @State private var isProcessing = false
     @State private var preprocessTask: Task<CachedAuroraPoints?, Never>? = nil
     @State private var useGlobe = true
+    @StateObject private var locationManager = LocationHeadingManager()
 
     init(auroraPoints: [AuroraPoint], hemisphere: Hemisphere, maxCircles: Int = 1000) {
         self.auroraPoints = auroraPoints
         self.hemisphere = hemisphere
         self.maxCircles = maxCircles
-        
+
         let centerLat = hemisphere == .north ? 65.0 : -65.0
         _position = State(initialValue: .camera(
             MapCamera(
@@ -181,7 +195,8 @@ struct AuroraMapGlobeView: View {
                 points: currentHemispherePoints,
                 position: $position,
                 hemisphere: hemisphere,
-                useGlobe: useGlobe
+                useGlobe: useGlobe,
+                userLocation: locationManager.location
             )
             .opacity(isProcessing ? 0.5 : 1.0)
             .animation(.easeInOut(duration: 0.3), value: isProcessing)
@@ -306,14 +321,14 @@ struct AuroraMapViewRepresentable: UIViewRepresentable {
     @Binding var position: MapCameraPosition
     let hemisphere: Hemisphere
     let useGlobe: Bool
-    
-    
+    let userLocation: CLLocation?
+
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
         // Set based on selection
         mapView.mapType = useGlobe ? .satelliteFlyover : .standard
         mapView.delegate = context.coordinator
-        
+
         // Set initial camera
         let centerLat = hemisphere == .north ? 65.0 : -65.0
         let camera = MKMapCamera(
@@ -323,16 +338,18 @@ struct AuroraMapViewRepresentable: UIViewRepresentable {
             heading: 0
         )
         mapView.setCamera(camera, animated: false)
-        
+
         return mapView
     }
-    
+
     func updateUIView(_ mapView: MKMapView, context: Context) {
         // Ensure selected style
         mapView.mapType = useGlobe ? .satelliteFlyover : .standard
-        // Remove old overlays
+
+        // Remove old overlays and annotations
         mapView.removeOverlays(mapView.overlays)
-        
+        mapView.removeAnnotations(mapView.annotations.filter { !($0 is MKUserLocation) })
+
         // Add new overlay with current points
         if !points.isEmpty {
             let overlay = AuroraOverlay(points: points)
@@ -347,7 +364,13 @@ struct AuroraMapViewRepresentable: UIViewRepresentable {
                 }
             }
         }
-        
+
+        // Add user location annotation
+        if let location = userLocation {
+            let annotation = UserLocationAnnotation(coordinate: location.coordinate)
+            mapView.addAnnotation(annotation)
+        }
+
         // Update camera when hemisphere changes
         context.coordinator.updateCamera(mapView: mapView, hemisphere: hemisphere, position: position)
     }
@@ -382,6 +405,58 @@ struct AuroraMapViewRepresentable: UIViewRepresentable {
                 return AuroraOverlayRenderer(overlay: auroraOverlay)
             }
             return MKOverlayRenderer(overlay: overlay)
+        }
+
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            // Don't override the built-in user location
+            if annotation is MKUserLocation {
+                return nil
+            }
+
+            // Custom view for our user location annotation
+            if annotation is UserLocationAnnotation {
+                let identifier = "UserLocation"
+                var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+
+                if annotationView == nil {
+                    annotationView = MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+                    annotationView?.canShowCallout = true
+
+                    // Create a custom view for the user location
+                    let size: CGFloat = 24
+                    let containerView = UIView(frame: CGRect(x: 0, y: 0, width: size, height: size))
+
+                    // Outer glow circle
+                    let glowCircle = UIView(frame: CGRect(x: 0, y: 0, width: size, height: size))
+                    glowCircle.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.3)
+                    glowCircle.layer.cornerRadius = size / 2
+                    containerView.addSubview(glowCircle)
+
+                    // Inner circle
+                    let innerSize: CGFloat = 14
+                    let innerCircle = UIView(frame: CGRect(x: (size - innerSize) / 2, y: (size - innerSize) / 2, width: innerSize, height: innerSize))
+                    innerCircle.backgroundColor = .systemBlue
+                    innerCircle.layer.cornerRadius = innerSize / 2
+                    innerCircle.layer.borderWidth = 2
+                    innerCircle.layer.borderColor = UIColor.white.cgColor
+                    containerView.addSubview(innerCircle)
+
+                    // Render the view to an image
+                    let renderer = UIGraphicsImageRenderer(size: containerView.bounds.size)
+                    let image = renderer.image { context in
+                        containerView.layer.render(in: context.cgContext)
+                    }
+
+                    annotationView?.image = image
+                    annotationView?.centerOffset = CGPoint(x: 0, y: 0)
+                } else {
+                    annotationView?.annotation = annotation
+                }
+
+                return annotationView
+            }
+
+            return nil
         }
     }
 }

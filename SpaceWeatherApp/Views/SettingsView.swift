@@ -103,78 +103,55 @@ struct SettingsView: View {
                         .foregroundStyle(Theme.tertiaryText)
                 }
                 
-                // Data Settings
+                // Observatories
                 Section {
-                    HStack {
-                        Text("Events Loaded")
-                            .font(Theme.mono(14))
-                        Spacer()
-                        Text("\(viewModel.events.count)")
-                            .font(Theme.mono(14, weight: .bold))
-                            .foregroundStyle(Theme.accentColor)
-                    }
-                    .listRowBackground(Theme.cardBackground)
-                    
-                    HStack {
-                        Text("Current Wavelength")
-                            .font(Theme.mono(14))
-                        Spacer()
-                        Text(viewModel.selectedWavelength.displayName)
-                            .font(Theme.mono(12))
-                            .foregroundStyle(Theme.secondaryText)
-                    }
-                    .listRowBackground(Theme.cardBackground)
-                    
-                    Button {
-                        Task { await viewModel.refresh() }
-                    } label: {
-                        HStack {
-                            Text("Refresh Data")
-                                .font(Theme.mono(14, weight: .bold))
-                            Spacer()
-                            if viewModel.isLoading {
-                                ProgressView()
-                                    .tint(Theme.accentColor)
-                            } else {
-                                Image(systemName: "arrow.clockwise")
+                    ForEach(SolarObservatory.allCases) { observatory in
+                        HStack(spacing: Theme.Spacing.md) {
+                            ZStack {
+                                Circle()
+                                    .fill(observatory.accentColor.opacity(0.15))
+                                    .frame(width: 36, height: 36)
+                                Image(systemName: observatory.icon)
+                                    .foregroundStyle(observatory.accentColor)
+                                    .font(.system(size: 16))
                             }
-                        }
-                        .foregroundStyle(Theme.accentColor)
-                    }
-                    .disabled(viewModel.isLoading)
-                    .listRowBackground(Theme.cardBackground)
-                } header: {
-                    Text("DATA")
-                        .font(Theme.mono(12, weight: .bold))
-                        .foregroundStyle(Theme.secondaryText)
-                }
-                .headerProminence(.increased)
-                .listRowSeparatorTint(Color.white.opacity(0.1))
-                
-                // SDO Wavelengths Info
-                Section {
-                    ForEach(SDOWavelength.allCases) { wavelength in
-                        HStack(spacing: 12) {
-                            Circle()
-                                .fill(colorForWavelength(wavelength))
-                                .frame(width: 8, height: 8)
-                                .shadow(color: colorForWavelength(wavelength).opacity(0.5), radius: 4)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(wavelength.displayName)
-                                    .font(Theme.mono(14, weight: .medium))
-                                Text(wavelength.description)
-                                    .font(.caption2) // Keep standard font for long reading text
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(observatory.displayName)
+                                    .font(Theme.mono(14, weight: .semibold))
+                                    .foregroundStyle(Theme.primaryText)
+                                Text("\(observatory.measurements.count) channels")
+                                    .font(Theme.mono(10))
                                     .foregroundStyle(Theme.secondaryText)
+                            }
+
+                            Spacer()
+
+                            // Measurement color dots
+                            HStack(spacing: 3) {
+                                ForEach(observatory.measurements.prefix(6)) { m in
+                                    Circle()
+                                        .fill(m.color)
+                                        .frame(width: 6, height: 6)
+                                }
+                                if observatory.measurements.count > 6 {
+                                    Text("+\(observatory.measurements.count - 6)")
+                                        .font(Theme.mono(9))
+                                        .foregroundStyle(Theme.tertiaryText)
+                                }
                             }
                         }
                         .padding(.vertical, 4)
                         .listRowBackground(Theme.cardBackground)
                     }
                 } header: {
-                    Text("SDO WAVELENGTHS")
+                    Text("OBSERVATORIES")
                         .font(Theme.mono(12, weight: .bold))
                         .foregroundStyle(Theme.secondaryText)
+                } footer: {
+                    Text("Browse all observatories and measurements in the Images tab.")
+                        .font(Theme.mono(10))
+                        .foregroundStyle(Theme.tertiaryText)
                 }
                 
                 // Resources
@@ -221,7 +198,7 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("SETTINGS")
-                        .font(Theme.mono(32, weight: .black))
+                        .font(.system(size: 32, weight: .heavy))
                         .tracking(3)
                         .foregroundStyle(Theme.settingsTitleGradient)
                         .shadow(color: Color.white.opacity(0.2), radius: 6, x: 0, y: 0)
@@ -237,21 +214,6 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(.dark)
-    }
-    
-    private func colorForWavelength(_ wavelength: SDOWavelength) -> Color {
-        switch wavelength.color {
-        case "green": return .green
-        case "teal": return .teal
-        case "yellow": return .yellow
-        case "orange": return .orange
-        case "purple": return .purple
-        case "red": return .red
-        case "blue": return .blue
-        case "pink": return .pink
-        case "gray": return .gray
-        default: return .white
-        }
     }
     
     private var enabledNotificationCount: Int {
@@ -573,7 +535,7 @@ struct NotificationSettingsView: View {
                     .font(Theme.mono(10))
                     .foregroundStyle(Theme.tertiaryText)
             }
-        }
+        }                                                                                    
         .scrollContentBackground(.hidden)
         .background(MeshGradientBackground(style: .settings))
         .navigationTitle("Notifications")

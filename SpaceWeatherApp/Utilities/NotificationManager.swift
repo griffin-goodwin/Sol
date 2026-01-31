@@ -1,6 +1,6 @@
 import Foundation
 import UserNotifications
-import BackgroundTasks
+@preconcurrency import BackgroundTasks
 
 // MARK: - Notification Preferences
 
@@ -47,7 +47,7 @@ class NotificationManager: NSObject, ObservableObject {
     private let preferencesKey = "notificationPreferences"
     
     // Background task identifier
-    static let backgroundTaskIdentifier = "com.griffingoodwin.sol.refresh"
+    nonisolated static let backgroundTaskIdentifier = "com.griffingoodwin.sol.refresh"
     
     override init() {
         // Load preferences
@@ -363,21 +363,20 @@ class NotificationManager: NSObject, ObservableObject {
     }
     
     // MARK: - Background Task Registration
-    
-    func registerBackgroundTasks() {
+
+    nonisolated func registerBackgroundTasks() {
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: Self.backgroundTaskIdentifier,
-            using: nil
+            using: .main  // Use main queue for the callback
         ) { task in
-            self.handleBackgroundRefresh(task: task as! BGAppRefreshTask)
+            Self.handleBackgroundRefreshStatic(task: task as! BGAppRefreshTask)
         }
     }
-    
-    func scheduleBackgroundRefresh() {
+
+    private nonisolated static func scheduleBackgroundRefreshSync() {
         let request = BGAppRefreshTaskRequest(identifier: Self.backgroundTaskIdentifier)
-        // Fetch no earlier than 15 minutes from now
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
-        
+
         do {
             try BGTaskScheduler.shared.submit(request)
             print("✅ Background refresh scheduled")
@@ -385,37 +384,43 @@ class NotificationManager: NSObject, ObservableObject {
             print("⚠️ Could not schedule background refresh: \(error)")
         }
     }
-    
-    private func handleBackgroundRefresh(task: BGAppRefreshTask) {
+
+    func scheduleBackgroundRefresh() {
+        Self.scheduleBackgroundRefreshSync()
+    }
+
+    // Static handler to avoid actor isolation issues
+    private nonisolated static func handleBackgroundRefreshStatic(task: BGAppRefreshTask) {
         // Schedule the next refresh
-        scheduleBackgroundRefresh()
-        
+        scheduleBackgroundRefreshSync()
+
         // Create a task to fetch alerts
         let fetchTask = Task {
             do {
                 let swpcService = SWPCService()
-                
+
                 // Fetch both SWPC alerts and GOES flares
                 async let alertsTask = swpcService.fetchUnifiedAlerts()
                 async let flaresTask = swpcService.fetchUnifiedFlares()
-                
+
                 let (alerts, flares) = try await (alertsTask, flaresTask)
                 let allEvents = alerts + flares
-                
+
                 await MainActor.run {
-                    self.processEventsForNotifications(allEvents)
+                    shared.processEventsForNotifications(allEvents)
                 }
-                
+
                 task.setTaskCompleted(success: true)
             } catch {
                 print("⚠️ Background fetch failed: \(error)")
                 task.setTaskCompleted(success: false)
             }
         }
-        
+
         // Handle expiration
         task.expirationHandler = {
             fetchTask.cancel()
+            task.setTaskCompleted(success: false)
         }
     }
     

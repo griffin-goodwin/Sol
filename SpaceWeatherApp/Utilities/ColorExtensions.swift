@@ -20,4 +20,14 @@ extension Color {
         return Color(nsColor: .controlBackgroundColor)
         #endif
     }
+    
+    /// Gold color used for SDO 171
+    static var gold: Color {
+        Color(red: 1.0, green: 0.84, blue: 0.0)
+    }
+
+    /// Cyan color for solar instruments
+    static var solarCyan: Color {
+        Color(red: 0.0, green: 1.0, blue: 1.0)
+    }
 }

@@ -239,29 +239,38 @@ func fetchAuroraPoints(hemisphere: Hemisphere) async throws -> [AuroraPoint] {
     // MARK: - Geocoding
 
     /// Reverse geocode a set of points. Updates the locationName property.
-    /// Uses CLGeocoder.
-    func geocodePoints(_ points: [AuroraPoint]) async -> [AuroraPoint] {
+    /// Uses CLGeocoder with rate limiting to avoid throttling.
+    /// - Parameter maxNew: Maximum number of new (uncached) geocode requests to make.
+    func geocodePoints(_ points: [AuroraPoint], maxNew: Int = 5) async -> [AuroraPoint] {
         let geocoder = CLGeocoder()
         var updatedPoints: [AuroraPoint] = []
+        var requestCount = 0
 
         for point in points {
             var p = point
-            
-            // Check cache first
+
+            // Check cache first (no API call needed)
             if let cachedName = geocodeCache[p.id] {
                 p.locationName = cachedName
                 updatedPoints.append(p)
                 continue
             }
-            
+
+            // Stop making new API calls if we've hit the limit
+            if requestCount >= maxNew {
+                updatedPoints.append(p)
+                continue
+            }
+
             let location = CLLocation(latitude: p.latitude, longitude: p.longitude)
             do {
                 let placemarks = try await geocoder.reverseGeocodeLocation(location)
                 if let placemark = placemarks.first {
-                    // Build a friendly name: City, Country or Region, Country
-                    let city = placemark.locality ?? placemark.administrativeArea
+                    let adminArea = placemark.administrativeArea
+                    let usableAdmin = adminArea?.localizedCaseInsensitiveContains("unorganized") == true ? nil : adminArea
+                    let city = placemark.locality ?? usableAdmin
                     let country = placemark.country
-                    
+
                     let name: String
                     if let city, let country {
                         name = "\(city), \(country)"
@@ -270,18 +279,32 @@ func fetchAuroraPoints(hemisphere: Hemisphere) async throws -> [AuroraPoint] {
                     } else {
                         name = placemark.name ?? "Unknown Location"
                     }
-                    
+
                     p.locationName = name
                     geocodeCache[p.id] = name
                 }
-            } catch {
-                print("⚠️ Geocoding failed for \(p.latitude), \(p.longitude): \(error.localizedDescription)")
+                requestCount += 1
+            } catch let error as NSError {
+                if error.domain == "GEOErrorDomain" && error.code == -3 {
+                    // Throttled - stop making requests
+                    updatedPoints.append(p)
+                    // Append remaining points without geocoding
+                    let remaining = points.dropFirst(updatedPoints.count)
+                    for var r in remaining {
+                        if let cachedName = geocodeCache[r.id] {
+                            r.locationName = cachedName
+                        }
+                        updatedPoints.append(r)
+                    }
+                    return updatedPoints
+                } else if error.domain != "kCLErrorDomain" || error.code != 2 {
+                    print("⚠️ Geocoding failed: \(error.localizedDescription)")
+                }
             }
             updatedPoints.append(p)
-            
-            // Be nice to Apple's geocoding service and avoid rate limiting
-            // Only sleep if we actually made a network request
-            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s
+
+            // Rate limit: 1.5s between requests to stay well within Apple's 50/min limit
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
         }
 
         return updatedPoints

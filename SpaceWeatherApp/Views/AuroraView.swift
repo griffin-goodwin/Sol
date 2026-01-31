@@ -15,7 +15,8 @@ struct AuroraView: View {
     @State private var topPoints: [AuroraPoint] = []
     @State private var maxPointsPerHemisphere: Int = 20000
     @State private var showAllLocations = false
-    
+    @State private var isGeocoding = false
+
     private let auroraService = AuroraService()
     
     var body: some View {
@@ -225,23 +226,6 @@ struct AuroraView: View {
                         // X-axis labels removed (time text not required)
                         
                     }
-                    .onAppear {
-                        // Debug: print computed bar heights and sample indices used for plotting
-                        let nowForDebug = Date()
-                        for (sIdx, sEntry) in samples.enumerated() {
-                            let globalIdx = kpForecast.firstIndex(where: { $0.timeTag == sEntry.timeTag && $0.kpIndex == sEntry.kpIndex }) ?? sIdx
-                            let barHeight = (sEntry.kpIndex / maxDisplayKp) * chartHeight
-                            let predictedFlag: Bool
-                            if let _ = sEntry.date {
-                                let forecastDates = kpForecast.compactMap { $0.date }
-                                let boundary = forecastDates.firstIndex(where: { $0 >= nowForDebug }) ?? forecastDates.count
-                                predictedFlag = globalIdx >= boundary
-                            } else {
-                                predictedFlag = false
-                            }
-                            print(String(format: "🔎 Bar debug: sample=%d global=%d kp=%.2f height=%.2f predicted=%@", sIdx, globalIdx, sEntry.kpIndex, barHeight, predictedFlag ? "YES" : "NO"))
-                        }
-                    }
 
                 }
                 // Summary: max kp in forecast and any NOAA scale
@@ -405,6 +389,11 @@ struct AuroraView: View {
                     Spacer()
 
                     HStack(spacing: 4) {
+                        if isGeocoding {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                                .tint(Theme.auroraGreen)
+                        }
                         Text(showAllLocations ? "Show less" : "Show more")
                             .font(Theme.mono(10))
                             .foregroundStyle(Theme.tertiaryText)
@@ -517,7 +506,6 @@ struct AuroraView: View {
         case .south:
             result = auroraPoints.filter { $0.latitude < 0 }
         }
-        print("🔎 Filtered points for \(selectedHemisphere.rawValue): \(result.count) of total \(auroraPoints.count)")
         return result
     }
 
@@ -568,13 +556,16 @@ struct AuroraView: View {
         // Initial set without names
         self.topPoints = sorted
 
-        // Geocode first 5 (visible in collapsed view)
+        // Geocode points - if expanded, geocode all; otherwise just first 5
+        let geocodeCount = showAllLocations ? sorted.count : 5
+        isGeocoding = true
         Task {
-            let geocoded = await auroraService.geocodePoints(sorted, maxNew: 5)
+            let geocoded = await auroraService.geocodePoints(sorted, maxNew: geocodeCount)
             await MainActor.run {
                 if !geocoded.isEmpty && self.topPoints.first?.id == sorted.first?.id {
                     self.topPoints = geocoded
                 }
+                isGeocoding = false
             }
         }
     }
@@ -584,6 +575,7 @@ struct AuroraView: View {
         let uncachedCount = topPoints.filter({ $0.locationName == nil }).count
         guard uncachedCount > 0 else { return }
 
+        isGeocoding = true
         let snapshot = topPoints
         Task {
             let geocoded = await auroraService.geocodePoints(snapshot, maxNew: uncachedCount)
@@ -591,6 +583,7 @@ struct AuroraView: View {
                 if !geocoded.isEmpty && self.topPoints.first?.id == snapshot.first?.id {
                     self.topPoints = geocoded
                 }
+                isGeocoding = false
             }
         }
     }
@@ -615,60 +608,12 @@ struct AuroraView: View {
                 self.lastUpdated = Date()
                 self.isLoading = false
                 self.updateTopPoints()
-
-                let northCount = points.filter { $0.latitude > 0 }.count
-                let southCount = points.filter { $0.latitude < 0 }.count
-                print("✅ Loaded aurora data: total=\(points.count), north=\(northCount), south=\(southCount)")
-                if let kp = kp {
-                    print("✅ Current Kp: \(kp.kpIndex) (\(kp.level.rawValue))")
-                }
-                print("✅ Loaded KP forecast: \(forecast.count) entries")
-
-                // Debug: show current UTC and forecast boundary (first date >= now)
-                let now = Date()
-                let iso = ISO8601DateFormatter()
-                let forecastDates = forecast.compactMap { $0.date }
-                let boundary = forecastDates.firstIndex(where: { $0 >= now }) ?? forecastDates.count
-                print("🔎 KP debug: now=\(iso.string(from: now)), boundaryIndex=\(boundary) (first date >= now)")
-                if !forecastDates.isEmpty {
-                    print("🔎 KP dates (first \(min(12, forecastDates.count))):")
-                    for (i, d) in forecastDates.prefix(12).enumerated() {
-                        print("  \(i): \(iso.string(from: d))")
-                    }
-                    // Print entries around the boundary for context
-                    let start = max(0, boundary - 3)
-                    let end = min(forecast.count - 1, boundary + 3)
-                    print("🔎 KP context around boundary (indices \(start)..\(end)):")
-                    for i in start...end {
-                        let p = forecast[i]
-                        let dateStr = p.date.map { iso.string(from: $0) } ?? "-"
-                        let est = p.estimated ?? "-"
-                        print(String(format: "  %2d: time=%@ kp=%.1f est=%@ date=%@", i, p.timeTag, p.kpIndex, est, dateStr))
-                    }
-                }
-
-                // Debug: print all KP entries plotted
-                print("🔎 KP all plotted entries (count=\(forecast.count)):")
-                for (i, p) in forecast.enumerated() {
-                    let dateStr = p.date.map { iso.string(from: $0) } ?? "-"
-                    let est = p.estimated ?? "-"
-                    print(String(format: "  %2d: time=%@ kp=%.1f est=%@ date=%@", i, p.timeTag, p.kpIndex, est, dateStr))
-                }
-
-                // Debug: highlight any entries with kp == 0.0
-                let zeroIndices = forecast.enumerated().filter { abs($0.element.kpIndex) < 1e-6 }.map { $0.offset }
-                if !zeroIndices.isEmpty {
-                    print("⚠️ KP zeros at indices: \(zeroIndices)")
-                } else {
-                    print("✅ No KP==0.0 entries found in forecast")
-                }
             }
         } catch {
             await MainActor.run {
                 self.errorMessage = error.localizedDescription
                 self.isLoading = false
             }
-            print("❌ Aurora: Failed to load data - \(error)")
         }
     }
     

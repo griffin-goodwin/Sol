@@ -39,23 +39,15 @@ actor AuroraService {
         }
         
         let forecast = try decoder.decode(AuroraForecast.self, from: data)
-        print("✅ Aurora: Fetched OVATION forecast with \(forecast.coordinates.count) data points")
         return forecast
     }
     
 func fetchAuroraPoints() async throws -> [AuroraPoint] {
     let forecast = try await fetchAuroraForecast()
-    // Quick debug: show first few raw coords and ranges
-    let sample = Array(forecast.coordinates.prefix(10))
-    print("🔎 OVATION sample coords (first 10): \(sample)")
 
-    // Compute ranges for index 0 and 1 to help detect which is lat vs lon
+    // Compute ranges for index 0 and 1 to detect which is lat vs lon
     let idx0Values = forecast.coordinates.compactMap { $0.count > 0 ? $0[0] : nil }
     let idx1Values = forecast.coordinates.compactMap { $0.count > 1 ? $0[1] : nil }
-    if let min0 = idx0Values.min(), let max0 = idx0Values.max(),
-       let min1 = idx1Values.min(), let max1 = idx1Values.max() {
-        print(String(format: "🔎 index0 range: %.2f .. %.2f, index1 range: %.2f .. %.2f", min0, max0, min1, max1))
-    }
 
     // Decide which index is latitude: prefer the index whose values fall within [-90,90] more strictly
     let idx0InLatRange = idx0Values.allSatisfy { abs($0) <= 90 }
@@ -65,14 +57,11 @@ func fetchAuroraPoints() async throws -> [AuroraPoint] {
 
     if idx1InLatRange && !idx0InLatRange {
         latIndex = 1; lonIndex = 0
-        print("🔎 Detected ordering: [lon, lat, prob] -> using index 1 as latitude")
     } else if idx0InLatRange && !idx1InLatRange {
         latIndex = 0; lonIndex = 1
-        print("🔎 Detected ordering: [lat, lon, prob] -> using index 0 as latitude")
     } else {
         // Ambiguous: assume NOAA format [lon, lat, prob] (most common)
         latIndex = 1; lonIndex = 0
-        print("🔎 Ambiguous ordering — defaulting to index 1 as latitude (common OVATION format)")
     }
 
     return forecast.coordinates.compactMap { coord -> AuroraPoint? in
@@ -100,13 +89,9 @@ func fetchAuroraPoints(hemisphere: Hemisphere) async throws -> [AuroraPoint] {
     let allPoints = try await fetchAuroraPoints()
     switch hemisphere {
     case .north:
-        let north = allPoints.filter { $0.latitude >= 0 }
-        print("🔎 North points count: \(north.count)")
-        return north
+        return allPoints.filter { $0.latitude >= 0 }
     case .south:
-        let south = allPoints.filter { $0.latitude < 0 }
-        print("🔎 South points count: \(south.count)")
-        return south
+        return allPoints.filter { $0.latitude < 0 }
     }
 }
     
@@ -145,7 +130,6 @@ func fetchAuroraPoints(hemisphere: Hemisphere) async throws -> [AuroraPoint] {
             )
         }
         
-        print("✅ Aurora: Fetched \(points.count) Kp index readings")
         return points
     }
     
@@ -192,18 +176,6 @@ func fetchAuroraPoints(hemisphere: Hemisphere) async throws -> [AuroraPoint] {
             guard !timeTag.isEmpty else { return nil }
 
             return KpIndexPoint(timeTag: timeTag, kpIndex: kpVal, estimated: scale)
-        }
-
-        print("✅ Aurora: Fetched KP forecast entries: \(points.count)")
-
-        // Debug: print first 12 parsed forecast entries for verification
-        if !points.isEmpty {
-            print("🔎 KP forecast sample (first \(min(12, points.count))):")
-            for (i, p) in points.prefix(12).enumerated() {
-                let dateStr = p.date.map { ISO8601DateFormatter().string(from: $0) } ?? "-"
-                let est = p.estimated ?? "-"
-                print(String(format: "  %2d: time=%@ kp=%.1f est=%@ date=%@", i, p.timeTag, p.kpIndex, est, dateStr))
-            }
         }
 
         return points
@@ -298,7 +270,7 @@ func fetchAuroraPoints(hemisphere: Hemisphere) async throws -> [AuroraPoint] {
                     }
                     return updatedPoints
                 } else if error.domain != "kCLErrorDomain" || error.code != 2 {
-                    print("⚠️ Geocoding failed: \(error.localizedDescription)")
+                    // Non-standard geocoding error
                 }
             }
             updatedPoints.append(p)

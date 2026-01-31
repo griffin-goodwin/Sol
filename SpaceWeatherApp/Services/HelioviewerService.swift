@@ -37,8 +37,6 @@ actor HelioviewerService {
         // Use startTime and endTime as required by Helioviewer API v2
         let urlString = "\(baseURL)/events/?startTime=\(startStr)&endTime=\(endStr)&sources=\(sourcesStr)"
         
-        print("🌐 Fetching events from Helioviewer: \(urlString)")
-        
         guard let url = URL(string: urlString) else {
             throw HelioviewerError.invalidURL
         }
@@ -49,14 +47,11 @@ actor HelioviewerService {
             throw HelioviewerError.invalidResponse
         }
         
-        print("📊 Response Status: \(httpResponse.statusCode)")
-        
         guard httpResponse.statusCode == 200 else {
             throw HelioviewerError.httpError(statusCode: httpResponse.statusCode)
         }
         
         let events = try decoder.decode([HelioviewerEventCategory].self, from: data)
-        print("✅ Decoded \(events.count) event categories")
         return HelioviewerEventsResponse(categories: events)
     }
     
@@ -133,7 +128,6 @@ actor HelioviewerService {
             }
         }
         
-        print("✨ Converted \(events.count) unified events")
         return events.sorted { $0.date > $1.date }
     }
     
@@ -299,7 +293,6 @@ actor HelioviewerService {
                 naxis2: Int(screenshotHeight)
             )
         } catch {
-            print("⚠️ Could not get WCS: \(error), using defaults")
             // Fallback to default values
             return SolarWCS(
                 crpix1: 512.0,
@@ -436,8 +429,6 @@ actor HelioviewerService {
         let totalDuration = endDate.timeIntervalSince(startDate)
         let frameInterval = totalDuration / Double(frameCount - 1)
 
-        print("🎞️ Generating \(frameCount) frame URLs from \(startDate) to \(endDate)")
-        
         var lastImageId: String? = nil
         
         for i in 0..<frameCount {
@@ -450,12 +441,9 @@ actor HelioviewerService {
                    closest.id != lastImageId {
                     // This is a new unique image!
                     if let url = getImageURL(date: frameDate, measurement: measurement, width: width, height: height) {
-                        print("  🖼️ Frame \(i) (Unique ID: \(closest.id)): \(isoDateString(from: frameDate))")
                         frames.append((date: frameDate, url: url))
                         lastImageId = closest.id
                     }
-                } else {
-                    print("  ⏭️ Skipping Frame \(i): No new image available for \(isoDateString(from: frameDate))")
                 }
             } else {
                 // SDO usually has high enough cadence that we can just request the timestamps

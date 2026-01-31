@@ -136,7 +136,8 @@ struct SDOImageView: View {
                 ForEach(SolarObservatory.allCases) { observatory in
                     ObservatoryChip(
                         observatory: observatory,
-                        isSelected: selectedObservatory == observatory
+                        isSelected: selectedObservatory == observatory,
+                        accentColor: selectedMeasurement.color
                     ) {
                         withAnimation(Theme.Animation.spring) {
                             selectedObservatory = observatory
@@ -385,9 +386,11 @@ struct SDOImageView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Create Animation")
                         .font(Theme.mono(14, weight: .semibold))
-                    Text("Generate a timelapse for \(selectedMeasurement.fullName)")
+                    Text("Generate a timelapse for \(selectedMeasurement.displayName)")
                         .font(Theme.mono(10))
                         .foregroundStyle(Theme.tertiaryText)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(2)
                 }
 
                 Spacer()
@@ -493,6 +496,7 @@ struct SDOImageView: View {
 struct ObservatoryChip: View {
     let observatory: SolarObservatory
     let isSelected: Bool
+    var accentColor: Color = .orange
     let action: () -> Void
 
     var body: some View {
@@ -500,18 +504,18 @@ struct ObservatoryChip: View {
             HStack(spacing: Theme.Spacing.sm) {
                 Image(systemName: observatory.icon)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(isSelected ? observatory.accentColor : Theme.tertiaryText)
+                    .foregroundStyle(isSelected ? accentColor : Theme.tertiaryText)
                 Text(observatory.displayName)
                     .font(Theme.mono(13, weight: isSelected ? .bold : .medium))
             }
             .foregroundStyle(isSelected ? .white : Theme.secondaryText)
             .padding(.horizontal, Theme.Spacing.md)
             .padding(.vertical, Theme.Spacing.sm)
-            .background(isSelected ? observatory.accentColor.opacity(0.2) : Color.white.opacity(0.06))
+            .background(isSelected ? accentColor.opacity(0.2) : Color.white.opacity(0.06))
             .clipShape(Capsule())
             .overlay {
                 Capsule()
-                    .stroke(isSelected ? observatory.accentColor.opacity(0.4) : Color.white.opacity(0.08), lineWidth: 1)
+                    .stroke(isSelected ? accentColor.opacity(0.4) : Color.white.opacity(0.08), lineWidth: 1)
             }
         }
         .buttonStyle(.plain)
@@ -800,8 +804,9 @@ private struct AnimationDrawer: View {
             RoundedRectangle(cornerRadius: 32)
                 .stroke(Color.white.opacity(0.1), lineWidth: 1)
         )
-        .padding(.bottom, 8)
-        .frame(maxHeight: .infinity, alignment: .bottom)
+        .padding(.bottom, 16) // Small space above tab bar
+        .padding(.top, 60) // Space for navigation title
+        .frame(maxHeight: UIScreen.main.bounds.height * 0.78, alignment: .bottom)
         .onAppear {
             if !didSetDefaults {
                 let hours = observatory.suggestedAnimationHours
@@ -872,7 +877,7 @@ private struct AnimationDrawer: View {
                 }
             }
         }
-        .frame(height: UIScreen.main.bounds.height * 0.35)
+        .frame(height: min(UIScreen.main.bounds.height * 0.28, 280))
         .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
     }
 

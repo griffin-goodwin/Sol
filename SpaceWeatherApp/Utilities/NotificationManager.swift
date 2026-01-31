@@ -75,7 +75,6 @@ class NotificationManager: NSObject, ObservableObject {
             }
             return granted
         } catch {
-            print("❌ Notification authorization error: \(error)")
             return false
         }
     }
@@ -134,7 +133,6 @@ class NotificationManager: NSObject, ObservableObject {
             seenEventIds.insert(event.id)
         }
         saveSeenEventIds()
-        print("📝 Marked \(events.count) existing events as seen")
     }
     
     func processEventsForNotifications(_ events: [SpaceWeatherEvent]) {
@@ -242,13 +240,7 @@ class NotificationManager: NSObject, ObservableObject {
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(identifier: event.id, content: content, trigger: trigger)
         
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("❌ Failed to schedule notification: \(error)")
-            } else {
-                print("✅ Scheduled notification for: \(event.title)")
-            }
-        }
+        UNUserNotificationCenter.current().add(request)
     }
     
     // MARK: - Notification Content Helpers
@@ -379,9 +371,8 @@ class NotificationManager: NSObject, ObservableObject {
 
         do {
             try BGTaskScheduler.shared.submit(request)
-            print("✅ Background refresh scheduled")
         } catch {
-            print("⚠️ Could not schedule background refresh: \(error)")
+            // Background refresh scheduling failed
         }
     }
 
@@ -412,7 +403,6 @@ class NotificationManager: NSObject, ObservableObject {
 
                 task.setTaskCompleted(success: true)
             } catch {
-                print("⚠️ Background fetch failed: \(error)")
                 task.setTaskCompleted(success: false)
             }
         }
@@ -448,13 +438,7 @@ class NotificationManager: NSObject, ObservableObject {
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false)
         let request = UNNotificationRequest(identifier: "test-\(Date().timeIntervalSince1970)", content: content, trigger: trigger)
         
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("❌ Failed to send test notification: \(error)")
-            } else {
-                print("✅ Test notification scheduled")
-            }
-        }
+        UNUserNotificationCenter.current().add(request)
     }
 }
 

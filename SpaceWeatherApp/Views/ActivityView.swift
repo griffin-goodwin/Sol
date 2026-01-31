@@ -164,25 +164,65 @@ struct ActivityView: View {
                     label: "M-Class (1d)",
                     color: mClassProbabilityColor
                 )
-                
+
                 Rectangle()
                     .fill(Color.white.opacity(0.1))
                     .frame(width: 1, height: 40)
-                
+
                 MetricItem(
                     value: viewModel.flareProbabilityForecast.hasData ? "\(viewModel.flareProbabilityForecast.xClassProbability)%" : "—",
                     label: "X-Class (1d)",
                     color: xClassProbabilityColor
                 )
-                
+
                 Rectangle()
                     .fill(Color.white.opacity(0.1))
                     .frame(width: 1, height: 40)
-                
+
                 MetricItem(
                     value: peakFlareClass,
                     label: "Peak Flare (\(formatTimeRange(viewModel.overlayTimeRangeHours)))",
                     color: peakFlareColor
+                )
+            }
+
+            // Divider
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [.white.opacity(0.03), .white.opacity(0.08), .white.opacity(0.03)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 1)
+
+            // Activity counts row
+            HStack(spacing: 0) {
+                MetricItem(
+                    value: "\(flareCount)",
+                    label: "Flares (\(formatTimeRange(viewModel.overlayTimeRangeHours)))",
+                    color: flareCountColor
+                )
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.1))
+                    .frame(width: 1, height: 40)
+
+                MetricItem(
+                    value: "\(cmeCount)",
+                    label: "CMEs (\(formatTimeRange(viewModel.overlayTimeRangeHours)))",
+                    color: cmeCount > 0 ? .purple : .gray
+                )
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.1))
+                    .frame(width: 1, height: 40)
+
+                MetricItem(
+                    value: "\(stormCount)",
+                    label: "Storms (\(formatTimeRange(viewModel.overlayTimeRangeHours)))",
+                    color: stormCount > 0 ? .purple : .gray
                 )
             }
         }
@@ -404,12 +444,24 @@ struct ActivityView: View {
         }
     }
     
-    private var activeRegionCount: Int {
-        viewModel.events.filter { $0.type == .activeRegion || $0.type == .sunspot }.count
+    private var cmeCount: Int {
+        filteredEvents.filter { $0.type == .cme }.count
     }
     
-    private var highSeverityCount: Int {
-        viewModel.events.filter { $0.severity == .high || $0.severity == .extreme }.count
+    private var flareCount: Int {
+        filteredEvents.filter { $0.type == .solarFlare }.count
+    }
+    
+    private var flareCountColor: Color {
+        let count = flareCount
+        if count >= 10 { return .red }
+        if count >= 5 { return .orange }
+        if count >= 1 { return .yellow }
+        return .gray
+    }
+    
+    private var stormCount: Int {
+        filteredEvents.filter { $0.type == .geomagneticStorm }.count
     }
     
     private var mClassProbabilityColor: Color {

@@ -46,12 +46,6 @@ actor SWPCService {
         
         let flares = try decoder.decode([GOESXRayFlare].self, from: data)
         
-        // Log sample of flares for debugging
-        if let first = flares.first, let last = flares.last {
-            print("✅ SWPC: Fetched \(flares.count) GOES X-ray flares (7-day)")
-            print("   First: \(first.maxClass ?? "?") at \(first.maxTime ?? "?")")
-            print("   Last: \(last.maxClass ?? "?") at \(last.maxTime ?? "?")")
-        }
         return flares
     }
     
@@ -157,7 +151,6 @@ actor SWPCService {
         }
         
         let alerts = try decoder.decode([SWPCAlert].self, from: data)
-        print("✅ SWPC: Fetched \(alerts.count) alerts")
         return alerts
     }
     
@@ -322,7 +315,6 @@ actor SWPCService {
             
             // Get first entry (most recent forecast = next 24 hours)
             if let first = probabilities.first {
-                print("✅ SWPC: Fetched flare probabilities - C:\(first.cClass1Day ?? 0)% M:\(first.mClass1Day ?? 0)% X:\(first.xClass1Day ?? 0)%")
                 return FlareProbabilityForecast(
                     cClassProbability: first.cClass1Day ?? 0,
                     mClassProbability: first.mClass1Day ?? 0,
@@ -332,7 +324,7 @@ actor SWPCService {
                 )
             }
         } catch {
-            print("⚠️ SWPC: Could not decode solar probabilities: \(error)")
+            // Decoding failed, return unavailable
         }
         
         return .unavailable
@@ -375,10 +367,9 @@ actor SWPCService {
             return date >= cutoffDate
         }
         
-        print("✅ SWPC: Fetched \(filteredPoints.count) SXR-B flux points (\(hoursBack)h)")
         return filteredPoints
     }
-    
+
     /// Fetch SXR A (0.5-4Å) flux data for a given time range in hours
     func fetchXRayFluxA(hoursBack: Int) async throws -> [XRayFluxDataPoint] {
         // Choose appropriate endpoint based on time range
@@ -413,10 +404,9 @@ actor SWPCService {
             return date >= cutoffDate
         }
         
-        print("✅ SWPC: Fetched \(filteredPoints.count) SXR-A flux points (\(hoursBack)h)")
         return filteredPoints
     }
-    
+
     /// Fetch both SXR-A and SXR-B data together (more efficient - single request)
     func fetchXRayFluxBoth(hoursBack: Int) async throws -> (sxrA: [XRayFluxDataPoint], sxrB: [XRayFluxDataPoint]) {
         let urlString: String
@@ -451,7 +441,6 @@ actor SWPCService {
             return date >= cutoffDate
         }
         
-        print("✅ SWPC: Fetched \(sxrA.count) SXR-A and \(sxrB.count) SXR-B flux points (\(hoursBack)h)")
         return (sxrA, sxrB)
     }
     
@@ -468,10 +457,9 @@ actor SWPCService {
         }
         
         let points = try decoder.decode([XRayFluxDataPoint].self, from: data)
-        print("✅ SWPC: Fetched \(points.count) X-ray flux data points (7-day)")
         return points
     }
-    
+
     /// Fetch 6-hour X-ray flux time series
     func fetchXRayFlux6Hour() async throws -> [XRayFluxDataPoint] {
         guard let url = URL(string: xrayFlux6HourURL) else {
@@ -485,7 +473,6 @@ actor SWPCService {
         }
         
         let points = try decoder.decode([XRayFluxDataPoint].self, from: data)
-        print("✅ SWPC: Fetched \(points.count) X-ray flux data points (6-hour)")
         return points
     }
     

@@ -120,7 +120,6 @@ class SpaceWeatherViewModel {
     func loadEvents(forceRefresh: Bool = false) async {
         // Skip if already loading (prevents race conditions)
         guard !isLoading || forceRefresh else {
-            print("⏭️ Already loading events, skipping")
             return
         }
         
@@ -144,20 +143,16 @@ class SpaceWeatherViewModel {
                 
                 while daysQueried < maxDays {
                     let currentStart = calendar.date(byAdding: .day, value: -1, to: currentEnd) ?? currentEnd.addingTimeInterval(-86400)
-                    print("📅 Fetching day \(daysQueried + 1): \(currentStart) to \(currentEnd)")
-                    
+
                     let dayEvents = try await helioviewerService.fetchUnifiedEvents(startDate: currentStart, endDate: currentEnd)
                     allEvents.append(contentsOf: dayEvents)
                     
                     currentEnd = currentStart
                     daysQueried += 1
                 }
-                print("✅ HEK: \(allEvents.count) events from \(daysQueried) days")
             } else {
                 // Single query for short time ranges
-                print("📅 Fetching events: \(startDate) to \(endDate) (\(hoursToFetch)h)")
                 allEvents = try await helioviewerService.fetchUnifiedEvents(startDate: startDate, endDate: endDate)
-                print("✅ HEK: \(allEvents.count) events")
             }
             
             // Fetch SWPC data (GOES flares + alerts)
@@ -177,14 +172,8 @@ class SpaceWeatherViewModel {
                         flare.date >= startDate && flare.date <= endDate
                     }
                     allEvents.append(contentsOf: filteredFlares)
-                    
-                    if startDate < sevenDaysAgo {
-                        print("✅ GOES: \(filteredFlares.count) flares (note: GOES only has 7 days of data)")
-                    } else {
-                        print("✅ GOES: \(filteredFlares.count) flares in \(hoursToFetch)h range")
-                    }
                 } catch {
-                    print("⚠️ Could not fetch GOES flares: \(error)")
+                    // GOES flare fetch failed, continue with other data
                 }
                 
                 // Fetch SWPC alerts (storms, radio blackouts, etc.)
@@ -194,12 +183,9 @@ class SpaceWeatherViewModel {
                         alert.date >= startDate && alert.date <= endDate
                     }
                     allEvents.append(contentsOf: filteredAlerts)
-                    print("✅ SWPC: \(filteredAlerts.count) alerts in range")
                 } catch {
-                    print("⚠️ Could not fetch SWPC alerts: \(error)")
+                    // SWPC alert fetch failed, continue with other data
                 }
-            } else {
-                print("📅 Time range is entirely before GOES 7-day window - using HEK data only")
             }
             
             // Remove duplicates by ID and sort by date
@@ -210,14 +196,12 @@ class SpaceWeatherViewModel {
                 return true
             }.sorted { $0.date > $1.date }
             
-            print("📊 Final: \(events.count) unique events")
             isLoading = false
             
             // Process events for notifications
             NotificationManager.shared.processEventsForNotifications(events)
         } catch {
             errorMessage = error.localizedDescription
-            print("❌ Error loading events: \(error)")
             isLoading = false
         }
     }
@@ -231,7 +215,6 @@ class SpaceWeatherViewModel {
            Date().timeIntervalSince(lastLoad) < 300,
            lastFluxRangeHours == overlayTimeRangeHours,
            !xrayFluxData.isEmpty {
-            print("📊 Using cached SXR flux data (\(xrayFluxData.count) SXR-B, \(xrayFluxDataA.count) SXR-A points)")
             return
         }
         
@@ -251,9 +234,8 @@ class SpaceWeatherViewModel {
             lastFluxRangeHours = overlayTimeRangeHours
             lastChartFluxDataCount = 0
             lastChartFluxDataACount = 0
-            print("📊 Loaded \(sxrB.count) SXR-B and \(sxrA.count) SXR-A flux data points (\(hoursToFetch)h)")
         } catch {
-            print("⚠️ Could not fetch X-ray flux: \(error)")
+            // X-ray flux fetch failed
         }
         isLoadingFlux = false
     }
@@ -276,7 +258,7 @@ class SpaceWeatherViewModel {
                 flareProbabilityForecast = newForecast
             }
         } catch {
-            print("⚠️ Could not load flare probabilities: \(error)")
+            // Flare probability fetch failed
         }
         
         isLoadingProbabilities = false
